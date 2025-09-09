@@ -1,0 +1,16 @@
+name: 🔁 Trigger Render Jobbot Cron
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # 8:00 AM ET
+    - cron: "0 23 * * *" # 6:00 PM ET
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  call-cron-endpoint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔁 Trigger Render /cron-job
+        run: |
+          curl -s -X GET "https://jobbot-y7um.onrender.com.onrender.com/cron-job"
