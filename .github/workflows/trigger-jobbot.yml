@@ -13,4 +13,4 @@ jobs:
     steps:
       - name: 🔁 Trigger Render /cron-job
         run: |
-          curl -s -X GET "https://jobbot-y7um.onrender.com.onrender.com/cron-job"
+          curl -s -X GET "https://jobbot-y7um.onrender.com/cron-job"
