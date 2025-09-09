@@ -15,6 +15,7 @@ app = FastAPI()
 
 scheduler = BackgroundScheduler()
 
+
 def run_scraper_job():
     logger.info("🚀 Running job scraper...")
 
@@ -43,6 +44,13 @@ def run_scraper_job():
 
     logger.info(f"✅ Finished run. Total new jobs added to Notion: {added}")
 
+    return {
+        "builtin_jobs": len(builtin_jobs),
+        "linkedin_jobs": len(linkedin_jobs),
+        "total_scraped": len(all_jobs),
+        "total_added": added
+    }
+
 
 scheduler.add_job(
     run_scraper_job,
@@ -61,7 +69,8 @@ def startup_scheduler():
 @app.get("/run-scraper")
 def run_scraper_on_demand():
     logger.info("🚀 Received request to run scraper on demand.")
-    run_scraper_job()
+    results = run_scraper_job()
     return {
         "status": "ok",
+        "sources": results
     }
