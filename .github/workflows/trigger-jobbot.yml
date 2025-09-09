@@ -11,6 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔁 Trigger Render /cron-job
+      - name: 🔁 Trigger Render /run-scraper
         run: |
-          curl -s -X GET "https://jobbot-y7um.onrender.com/cron-job"
+          curl -s -X GET "https://jobbot-y7um.onrender.com/run-scraper"
