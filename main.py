@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from builtin_scraper import scrape_builtin_pm_internships
 from linkedin_scraper import scrape_linkedin_pm_internships
+from CMS_scraper import login_and_scrape as scrape_cms_jobs
+from handshake_scraper import login_and_scrape as scrape_handshake_jobs
 from notion_api import push_job_to_notion, get_jobs_from_notion
 from apscheduler.triggers.cron import CronTrigger
 import logging
@@ -21,10 +23,14 @@ def run_scraper_job():
 
     builtin_jobs = scrape_builtin_pm_internships()
     linkedin_jobs = scrape_linkedin_pm_internships()
-    all_jobs = builtin_jobs + linkedin_jobs
+    cms_jobs = scrape_cms_jobs()
+    handshake_jobs = scrape_handshake_jobs()
+    all_jobs = builtin_jobs + linkedin_jobs + cms_jobs + handshake_jobs
 
     logger.info(f"📊 Scraped {len(builtin_jobs)} jobs from BuiltIn.")
     logger.info(f"📊 Scraped {len(linkedin_jobs)} jobs from LinkedIn.")
+    logger.info(f"📊 Scraped {len(cms_jobs)} jobs from CMS (12twenty).")
+    logger.info(f"📊 Scraped {len(handshake_jobs)} jobs from Handshake.")
     logger.info(f"🔢 Total jobs scraped: {len(all_jobs)}")
 
     added = 0
@@ -47,6 +53,8 @@ def run_scraper_job():
     return {
         "builtin_jobs": len(builtin_jobs),
         "linkedin_jobs": len(linkedin_jobs),
+        "cms_jobs": len(cms_jobs),
+        "handshake_jobs": len(handshake_jobs),
         "total_scraped": len(all_jobs),
         "total_added": added
     }

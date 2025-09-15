@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: jobbot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: NOTION_API_KEY
+        sync: false
+      - key: NOTION_DATABASE_ID
+        sync: false
+      - key: KELLOGG_NETID
+        sync: false
+      - key: KELLOGG_PASS
+        sync: false
+      - key: KELLOGG_EMAIL
+        sync: false
