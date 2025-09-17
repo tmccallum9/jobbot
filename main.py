@@ -82,3 +82,6 @@ def run_scraper_on_demand():
         "status": "ok",
         "sources": results
     }
+
+if __name__ == "__main__":
+    run_scraper_job()
