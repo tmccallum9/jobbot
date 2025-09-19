@@ -20,12 +20,19 @@ scheduler = BackgroundScheduler()
 
 def run_scraper_job():
     logger.info("🚀 Running job scraper...")
+    try:
+        builtin_jobs = scrape_builtin_pm_internships()
+        linkedin_jobs = scrape_linkedin_pm_internships()
+        cms_jobs = scrape_cms_jobs()
+        handshake_jobs = scrape_handshake_jobs()
+    except Exception as e:
+        logger.exception(f"❌ Top-level scrape failure: {e}")
+        return {
+            "error": "scrape_failed",
+            "message": str(e)
+        }
 
-    builtin_jobs = scrape_builtin_pm_internships()
-    linkedin_jobs = scrape_linkedin_pm_internships()
-    cms_jobs = scrape_cms_jobs()
-    handshake_jobs = scrape_handshake_jobs()
-    all_jobs = builtin_jobs + linkedin_jobs + cms_jobs + handshake_jobs
+    all_jobs = (builtin_jobs or []) + (linkedin_jobs or []) + (cms_jobs or []) + (handshake_jobs or [])
 
     logger.info(f"📊 Scraped {len(builtin_jobs)} jobs from BuiltIn.")
     logger.info(f"📊 Scraped {len(linkedin_jobs)} jobs from LinkedIn.")
@@ -36,17 +43,26 @@ def run_scraper_job():
     added = 0
     for job in all_jobs:
         try:
-            if get_jobs_from_notion(job["title"], job["company"]):
-                logger.info(f"🟡 Skipping duplicate: {job['title']} at {job['company']}")
+            title = job.get("title", "")
+            company = job.get("company", "")
+            location = job.get("location", "")
+            url = job.get("url", "")
+
+            if not title or not company:
+                logger.warning(f"⚠️ Skipping job with missing fields: title='{title}' company='{company}' url='{url}'")
                 continue
 
-            logger.info(f"🆕 Adding job: {job['title']} at {job['company']} ({job['location']})")
-            logger.info(f"→ URL: {job['url']}")
+            if get_jobs_from_notion(title, company):
+                logger.info(f"🟡 Skipping duplicate: {title} at {company}")
+                continue
+
+            logger.info(f"🆕 Adding job: {title} at {company} ({location})")
+            logger.info(f"→ URL: {url}")
             push_job_to_notion(job)
             added += 1
 
         except Exception as e:
-            logger.error(f"❌ Failed to add job: {job['title']} at {job['company']}: {str(e)}")
+            logger.exception(f"❌ Failed to add job '{job}': {e}")
 
     logger.info(f"✅ Finished run. Total new jobs added to Notion: {added}")
 
@@ -77,11 +93,18 @@ def startup_scheduler():
 @app.get("/run-scraper")
 def run_scraper_on_demand():
     logger.info("🚀 Received request to run scraper on demand.")
-    results = run_scraper_job()
-    return {
-        "status": "ok",
-        "sources": results
-    }
+    try:
+        results = run_scraper_job()
+        return {
+            "status": "ok",
+            "sources": results
+        }
+    except Exception as e:
+        logger.exception(f"❌ /run-scraper failed: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 if __name__ == "__main__":
     run_scraper_job()
