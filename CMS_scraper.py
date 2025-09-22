@@ -149,7 +149,7 @@ def scroll_to_load_all(page, row_selector="tr", pause=1500, max_scrolls=30):
 def login_and_scrape():
     jobs = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, slow_mo=300)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
         # Step 1: Navigate to 12twenty SSO

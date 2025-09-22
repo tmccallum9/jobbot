@@ -152,7 +152,7 @@ def extract_job_info(job_element, page=None):
 def login_and_scrape():
     jobs = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False, slow_mo=300)
+        browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
         try:

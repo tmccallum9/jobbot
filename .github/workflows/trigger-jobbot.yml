@@ -32,6 +32,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: 🌐 Install Playwright browsers
+        run: playwright install
+
       - name: 🔁 Trigger Render /run-scraper
         run: |
           curl -s -X GET "https://jobbot-y7um.onrender.com/run-scraper"
