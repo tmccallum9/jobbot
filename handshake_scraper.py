@@ -1,14 +1,19 @@
 import os
 import json
+import logging
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+from config_loader import get_config
 
 # Load environment variables
 load_dotenv()
-KELLOGG_EMAIL = os.getenv("KELLOGG_EMAIL")
-KELLOGG_PASS = os.getenv("KELLOGG_PASS")
-NETID = os.getenv("KELLOGG_NETID")
-PASSWORD = os.getenv("KELLOGG_PASS")
+logger = logging.getLogger(__name__)
+
+# Support both institution-specific and generic env var names
+KELLOGG_EMAIL = os.getenv("KELLOGG_EMAIL") or os.getenv("UNIVERSITY_EMAIL")
+KELLOGG_PASS = os.getenv("KELLOGG_PASS") or os.getenv("UNIVERSITY_PASSWORD")
+NETID = os.getenv("KELLOGG_NETID") or os.getenv("UNIVERSITY_USERNAME")
+PASSWORD = os.getenv("KELLOGG_PASS") or os.getenv("UNIVERSITY_PASSWORD")
 
 # Use existing CMS credentials if Handshake-specific ones aren't available
 if not KELLOGG_EMAIL:
@@ -22,11 +27,11 @@ assert PASSWORD, "❌ KELLOGG_PASS not found in .env"
 
 def debug_page_structure(page):
     """Debug function to inspect the page structure"""
-    print("🔍 DEBUGGING PAGE STRUCTURE:")
+    logger.debug("🔍 DEBUGGING PAGE STRUCTURE:")
 
     # Check for job listings
     job_links = page.query_selector_all("a[href*='/job-search/']")
-    print(f"🔍 Found {len(job_links)} job links")
+    logger.debug(f"🔍 Found {len(job_links)} job links")
 
     # Check for different possible selectors
     possible_selectors = [
@@ -39,7 +44,7 @@ def debug_page_structure(page):
 
     for selector in possible_selectors:
         elements = page.query_selector_all(selector)
-        print(f"🔍 Selector '{selector}': {len(elements)} elements found")
+        logger.debug(f"🔍 Selector '{selector}': {len(elements)} elements found")
         if len(elements) > 0:
             # Print first few elements
             for i, el in enumerate(elements[:3]):
@@ -47,9 +52,9 @@ def debug_page_structure(page):
                 aria_label = el.get_attribute("aria-label") or ""
                 href = el.get_attribute("href") or ""
                 if text or aria_label:
-                    print(f"  [{i+1}] Text: '{text[:50]}...'")
-                    print(f"      Aria-label: '{aria_label[:50]}...'")
-                    print(f"      Href: '{href[:50]}...'")
+                    logger.debug(f"  [{i+1}] Text: '{text[:50]}...'")
+                    logger.debug(f"      Aria-label: '{aria_label[:50]}...'")
+                    logger.debug(f"      Href: '{href[:50]}...'")
 
 
 def extract_job_info_from_page(page, job_url):
@@ -111,7 +116,7 @@ def extract_job_info_from_page(page, job_url):
         return company, location
 
     except Exception as e:
-        print(f"❌ Error extracting job details from page: {e}")
+        logger.error(f"❌ Error extracting job details from page: {e}")
         return "Unknown", "N/A"
 
 
@@ -145,7 +150,7 @@ def extract_job_info(job_element, page=None):
             "url": url
         }
     except Exception as e:
-        print(f"❌ Error extracting job info: {e}")
+        logger.error(f"❌ Error extracting job info: {e}")
         return None
 
 
@@ -157,16 +162,16 @@ def login_and_scrape():
 
         try:
             # Step 1: Navigate to Handshake login
-            print("🔐 Step 1: Navigating to Handshake login...")
+            logger.info("🔐 Step 1: Navigating to Handshake login...")
             page.goto("https://app.joinhandshake.com/login")
             page.wait_for_timeout(3000)
 
             # Debug: Check what's on the page
-            print("🔍 Current page URL:", page.url)
-            print("🔍 Page title:", page.title())
+            logger.debug(f"🔍 Current page URL: {page.url}")
+            logger.debug(f"🔍 Page title: {page.title()}")
 
             # Step 2: Enter Kellogg email
-            print("📧 Step 2: Entering Kellogg email...")
+            logger.info("📧 Step 2: Entering Kellogg email...")
             try:
                 # Try to find the specific email input field
                 email_input = page.wait_for_selector("#email-address-identifier", timeout=10000)
@@ -185,22 +190,22 @@ def login_and_scrape():
                         try:
                             email_input = page.wait_for_selector(selector, timeout=3000)
                             if email_input:
-                                print(f"✅ Found email input with selector: {selector}")
+                                logger.debug(f"✅ Found email input with selector: {selector}")
                                 break
                         except:
                             continue
 
                 if not email_input:
-                    print("❌ Could not find email input field")
+                    logger.error("❌ Could not find email input field")
                     # Take a screenshot for debugging
                     page.screenshot(path="handshake_debug.png")
                     return jobs
 
-                print("✅ Found email input field")
+                logger.info("✅ Found email input field")
                 email_input.fill(KELLOGG_EMAIL or "")
 
                 # Blur the input field to enable the Next button
-                print("🖱️ Blurring email input to enable Next button...")
+                logger.debug("🖱️ Blurring email input to enable Next button...")
                 # Use JavaScript to blur the element
                 page.evaluate("document.getElementById('email-address-identifier').blur()")
                 page.wait_for_timeout(1000)
@@ -220,14 +225,14 @@ def login_and_scrape():
                         next_button = page.locator(selector).first
                         if next_button.is_visible() and next_button.is_enabled():
                             next_button.click()
-                            print(f"✅ Clicked next button with selector: {selector}")
+                            logger.debug(f"✅ Clicked next button with selector: {selector}")
                             next_clicked = True
                             break
                     except:
                         continue
 
                 if not next_clicked:
-                    print("❌ Could not find or click next button")
+                    logger.error("❌ Could not find or click next button")
                     # Take a screenshot for debugging
                     page.screenshot(path="handshake_next_button_debug.png")
                     return jobs
@@ -235,7 +240,7 @@ def login_and_scrape():
                 page.wait_for_timeout(3000)
 
                 # Step 3: Select Northwestern University Student NetID Login
-                print("🎓 Step 3: Selecting Northwestern University Student NetID Login...")
+                logger.info("🎓 Step 3: Selecting Northwestern University Student NetID Login...")
                 netid_selectors = [
                     "button:has-text('Northwestern University Student NetID Login')",
                     "a:has-text('Northwestern University Student NetID Login')",
@@ -250,25 +255,25 @@ def login_and_scrape():
                         netid_button = page.locator(selector).first
                         if netid_button.is_visible():
                             netid_button.click()
-                            print(f"✅ Clicked Northwestern button with selector: {selector}")
+                            logger.debug(f"✅ Clicked Northwestern button with selector: {selector}")
                             netid_clicked = True
                             break
                     except:
                         continue
 
                 if not netid_clicked:
-                    print("❌ Could not find Northwestern University login button")
+                    logger.error("❌ Could not find Northwestern University login button")
                     return jobs
 
                 page.wait_for_timeout(3000)
 
                 # Step 4: Login with NetID and Password
-                print("🔑 Step 4: Logging in with NetID and Password...")
+                logger.info("🔑 Step 4: Logging in with NetID and Password...")
                 try:
                     # Wait for page to load and check current URL
                     page.wait_for_timeout(3000)
-                    print(f"🔍 Current URL after Northwestern click: {page.url}")
-                    print(f"🔍 Page title: {page.title()}")
+                    logger.debug(f"🔍 Current URL after Northwestern click: {page.url}")
+                    logger.debug(f"🔍 Page title: {page.title()}")
 
                     # Try different selectors for username field
                     username_selectors = [
@@ -287,13 +292,13 @@ def login_and_scrape():
                         try:
                             username_input = page.wait_for_selector(selector, timeout=3000)
                             if username_input:
-                                print(f"✅ Found username input with selector: {selector}")
+                                logger.debug(f"✅ Found username input with selector: {selector}")
                                 break
                         except:
                             continue
 
                     if not username_input:
-                        print("❌ Could not find username input field")
+                        logger.error("❌ Could not find username input field")
                         page.screenshot(path="handshake_netid_debug.png")
                         return jobs
 
@@ -312,13 +317,13 @@ def login_and_scrape():
                         try:
                             password_input = page.wait_for_selector(selector, timeout=3000)
                             if password_input:
-                                print(f"✅ Found password input with selector: {selector}")
+                                logger.debug(f"✅ Found password input with selector: {selector}")
                                 break
                         except:
                             continue
 
                     if not password_input:
-                        print("❌ Could not find password input field")
+                        logger.error("❌ Could not find password input field")
                         return jobs
 
                     # Fill in credentials
@@ -342,48 +347,54 @@ def login_and_scrape():
                             login_button = page.locator(selector).first
                             if login_button.is_visible():
                                 login_button.click()
-                                print(f"✅ Clicked login button with selector: {selector}")
+                                logger.debug(f"✅ Clicked login button with selector: {selector}")
                                 login_clicked = True
                                 break
                         except:
                             continue
 
                     if not login_clicked:
-                        print("❌ Could not find login button")
+                        logger.error("❌ Could not find login button")
                         return jobs
 
                     page.wait_for_timeout(5000)
-                    print("✅ Successfully logged in with NetID")
+                    logger.info("✅ Successfully logged in with NetID")
 
                 except Exception as e:
-                    print(f"❌ Error during NetID login: {e}")
+                    logger.error(f"❌ Error during NetID login: {e}")
                     page.screenshot(path="handshake_netid_error.png")
                     return jobs
 
             except Exception as e:
-                print(f"❌ Error during email entry: {e}")
+                logger.error(f"❌ Error during email entry: {e}")
                 return jobs
 
             # Step 5: Navigate to job search page
-            print("🔍 Step 5: Navigating to job search page...")
-            job_search_url = "https://app.joinhandshake.com/job-search?query=product+manager+intern&pay%5BsalaryType%5D=1&jobType=3&jobRoleGroups=34&remoteWork=onsite&remoteWork=hybrid&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22San+Francisco%2C+CA%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2237.774929%2C-122.419415%22%2C%22text%22%3Anull%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22New+York%2C+NY%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2240.712784%2C-74.005941%22%2C%22text%22%3Anull%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22California%2C+United+States%22%2C%22type%22%3A%22region%22%2C%22point%22%3A%2237.07436%2C-119.699375%22%2C%22text%22%3A%22California%22%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22Chicago%2C+Illinois%2C+United+States%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2241.881953%2C-87.632362%22%2C%22text%22%3A%22Chicago%22%7D&page=1&per_page=25"
+            logger.info("🔍 Step 5: Navigating to job search page...")
+            config = get_config()
+            job_search_url = config.get_scraper_url("handshake")
+
+            if not job_search_url:
+                logger.warning("⚠️ Handshake scraper URL not configured, using default")
+                job_search_url = "https://app.joinhandshake.com/job-search?query=product+manager+intern&pay%5BsalaryType%5D=1&jobType=3&jobRoleGroups=34&remoteWork=onsite&remoteWork=hybrid&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22San+Francisco%2C+CA%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2237.774929%2C-122.419415%22%2C%22text%22%3Anull%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22New+York%2C+NY%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2240.712784%2C-74.005941%22%2C%22text%22%3Anull%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22California%2C+United+States%22%2C%22type%22%3A%22region%22%2C%22point%22%3A%2237.07436%2C-119.699375%22%2C%22text%22%3A%22California%22%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22Chicago%2C+Illinois%2C+United+States%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2241.881953%2C-87.632362%22%2C%22text%22%3A%22Chicago%22%7D&page=1&per_page=25"
 
             page.goto(job_search_url)
             page.wait_for_timeout(5000)
 
-            # DEBUG: Inspect page structure
-            debug_page_structure(page)
+            # DEBUG: Inspect page structure (only runs if log level is DEBUG)
+            if logger.isEnabledFor(logging.DEBUG):
+                debug_page_structure(page)
 
             # Step 6: Scroll to load all jobs
-            print("📜 Step 6: Scrolling to load all jobs...")
+            logger.info("📜 Step 6: Scrolling to load all jobs...")
             last_count = 0
             for i in range(10):  # Max 10 scrolls
                 job_links = page.query_selector_all("a[href*='/job-search/']")
                 count = len(job_links)
-                print(f"🔽 Scroll {i+1}: found {count} job links")
+                logger.debug(f"🔽 Scroll {i+1}: found {count} job links")
 
                 if count == last_count and i > 2:
-                    print("✅ All jobs loaded")
+                    logger.debug("✅ All jobs loaded")
                     break
                 last_count = count
 
@@ -391,12 +402,13 @@ def login_and_scrape():
                 page.wait_for_timeout(2000)
 
             # Step 7: Scrape job data
-            print("🎯 Step 7: Scraping job data...")
+            logger.info("🎯 Step 7: Scraping job data...")
             job_links = page.query_selector_all("a[href*='/job-search/']")
-            print(f"🔍 Final job count: {len(job_links)}")
+            logger.info(f"🔍 Final job count: {len(job_links)}")
 
+            config = get_config()
             for i, job_link in enumerate(job_links):
-                print(f"\n🔍 Processing job {i+1}:")
+                logger.debug(f"🔍 Processing job {i+1}:")
 
                 job_info = extract_job_info(job_link, page)
                 if not job_info:
@@ -405,21 +417,19 @@ def login_and_scrape():
                 title = job_info["title"]
                 company = job_info["company"]
                 location = job_info["location"]
-                print(f"  📝 Title: {title}")
-                print(f"  🏢 Company: {company}")
-                print(f"  📍 Location: {location}")
+                logger.debug(f"  📝 Title: {title}")
+                logger.debug(f"  🏢 Company: {company}")
+                logger.debug(f"  📍 Location: {location}")
 
-                # Filter by keywords
-                title_lower = title.lower()
-                if ("product" in title_lower and
-                    ("intern" in title_lower or "internship" in title_lower)):
+                # Filter by keywords using config
+                if config.matches_title_filter(title):
                     jobs.append(job_info)
-                    print(f"  ✅ Added to jobs list!")
+                    logger.info(f"  ✅ Added to jobs list: {title}")
                 else:
-                    print(f"  ⏭️ Skipped (doesn't match filter)")
+                    logger.debug("  ⏭️ Skipped (doesn't match filter)")
 
         except Exception as e:
-            print(f"❌ Error during scraping: {e}")
+            logger.error(f"❌ Error during scraping: {e}")
 
         finally:
             browser.close()
@@ -428,6 +438,7 @@ def login_and_scrape():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     results = login_and_scrape()
-    print(f"\n🎯 FINAL RESULTS: {len(results)} jobs found")
-    print(json.dumps(results, indent=2))
+    logger.info(f"🎯 FINAL RESULTS: {len(results)} jobs found")
+    logger.info(json.dumps(results, indent=2))

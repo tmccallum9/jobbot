@@ -1,0 +1,76 @@
+# JobBot Configuration File
+# This file allows you to customize job search parameters without modifying code
+
+# Job Search Configuration
+job_search:
+  # Keywords to search for in job titles (case-insensitive)
+  # All keywords in a group must be present (AND logic)
+  # At least one group must match (OR logic between groups)
+  title_keywords:
+    - keywords: ["product", "intern"]  # Default: Product Manager Internships
+      # Example alternatives:
+      # - keywords: ["software", "engineer", "intern"]  # Software Engineering Internships
+      # - keywords: ["data", "analyst"]  # Data Analyst roles
+      # - keywords: ["marketing"]  # Marketing roles
+
+  # Locations to search (used by some scrapers)
+  locations:
+    - "San Francisco, CA"
+    - "New York, NY"
+    - "Chicago, IL"
+    - "California, United States"
+
+  # Remote work preferences
+  remote_preferences:
+    - "onsite"
+    - "hybrid"
+    # - "remote"  # Uncomment to include fully remote positions
+
+# Scraper-Specific Configuration
+scrapers:
+  builtin:
+    enabled: true
+    # Base URL for job search (you can customize the query parameters)
+    search_url: "https://builtin.com/jobs/hybrid/office/product?search=Product+Manager%2C+Intern&country=USA&allLocations=true"
+
+  linkedin:
+    enabled: true
+    # LinkedIn has a complex URL structure. Modify the parameters as needed:
+    # f_JT=I (Internship), f_JT=F (Full-time), f_JT=P (Part-time)
+    # f_E=1,3,4 (Experience levels)
+    # f_TPR=r2592000 (Posted in last 30 days)
+    search_url: "https://www.linkedin.com/jobs/search/?currentJobId=4279913253&distance=25&f_E=1%2C3%2C4&f_F=prdm%2Cmrkt%2Cit%2Cmgmt%2Canls&f_JT=I&f_PP=106233382%2C102571732%2C104116203%2C106504367%2C100075706%2C102277331%2C102250832%2C103112676&f_T=27%2C270%2C9572%2C2995&f_TPR=r2592000&f_WT=1%2C3&geoId=103644278&keywords=Product%20Manager%20Intern&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true&sortBy=R"
+
+  cms:
+    enabled: true
+    # For university job portals - requires authentication
+    # The scraper will filter jobs using the title_keywords above
+
+  handshake:
+    enabled: true
+    # Handshake search URL - customize as needed
+    # jobType=3 (Internship), jobRoleGroups=34 (Product Management)
+    search_url: "https://app.joinhandshake.com/job-search?query=product+manager+intern&pay%5BsalaryType%5D=1&jobType=3&jobRoleGroups=34&remoteWork=onsite&remoteWork=hybrid&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22San+Francisco%2C+CA%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2237.774929%2C-122.419415%22%2C%22text%22%3Anull%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22New+York%2C+NY%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2240.712784%2C-74.005941%22%2C%22text%22%3Anull%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22California%2C+United+States%22%2C%22type%22%3A%22region%22%2C%22point%22%3A%2237.07436%2C-119.699375%22%2C%22text%22%3A%22California%22%7D&locationFilter=%7B%22distance%22%3A%2250mi%22%2C%22label%22%3A%22Chicago%2C+Illinois%2C+United+States%22%2C%22type%22%3A%22place%22%2C%22point%22%3A%2241.881953%2C-87.632362%22%2C%22text%22%3A%22Chicago%22%7D&page=1&per_page=25"
+
+# Notion Configuration
+notion:
+  # Property names in your Notion database
+  # Customize these if your database uses different property names
+  properties:
+    title: "Job Title"
+    company: "Company"
+    location: "Location"
+    url: "Application URL"
+    date_added: "Date Added"  # Optional - not currently used but reserved for future
+
+# Scheduler Configuration
+scheduler:
+  # Cron expression for when to run the scraper
+  # Default: "0 9 * * *" = Daily at 9 AM
+  # Format: minute hour day month day_of_week
+  # Examples:
+  #   "0 9 * * *"     - Daily at 9 AM
+  #   "0 9,17 * * *"  - Daily at 9 AM and 5 PM
+  #   "0 9 * * 1-5"   - Weekdays at 9 AM
+  cron: "0 9 * * *"
+  timezone: "America/New_York"

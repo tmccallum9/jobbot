@@ -35,6 +35,13 @@ jobs:
       - name: 🌐 Install Playwright browsers
         run: playwright install
 
-      - name: 🔁 Trigger Render /run-scraper
+      - name: 🔁 Trigger /run-scraper endpoint
+        env:
+          DEPLOYMENT_URL: ${{ secrets.DEPLOYMENT_URL }}
         run: |
-          curl -s -X GET "https://jobbot-y7um.onrender.com/run-scraper"
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            echo "❌ DEPLOYMENT_URL secret is not set"
+            exit 1
+          fi
+          echo "📡 Triggering scraper at: $DEPLOYMENT_URL"
+          curl -s -X GET "${DEPLOYMENT_URL}/run-scraper"
